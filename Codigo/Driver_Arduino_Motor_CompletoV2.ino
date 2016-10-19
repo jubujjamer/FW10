@@ -11,6 +11,7 @@ POS? W: Returns a string stating the actual position of wheel W. W is an integer
 STEP S W: Moves wheel W, S steps. W is an integer between 1 and 3;
 SENS W: Senses the voltage returned by the sensor. W is an integer between 1 and 3;
 RESET W: Resets the wheel W to the origin set by the marker and sets it as origin (1). W is an integer between 1 and 3. If the threshold can´t be found, a string is returned stating the problem. If it´s already at the marker, it moves away from it and searches for it again.
+SHUT S M: Turns Shuter S on or off. S is an integer between 1 and 3. M is a shuter state: 0 for closed, 1 for open 
 If an unmatching string is sent, a string reporting the error is returned.
 
 Motors corresponding to wheels 1, 2 and 3 should be connected to Arduino pins (7,8), (9,10) and (11,12), respectively. Analogously, voltage sensing pins should be 0, 1 and 2, in the same order.
@@ -25,7 +26,9 @@ int Actual[3] = {1, 1, 1}; // Variable for actual position of each wheel
 int pins[3][3]; // Variable for the Arduino pins where each motor is connected
 int analogpin[3] = {0, 1, 2}; // Analog pin for the voltage measurement of the sensor
 AccelStepper steppers[3]; // {AccelStepper(2, 7, 8), AccelStepper(2, 9, 10), AccelStepper(2, 11, 12)}; //set type motor, and both pins connected to Arduino
-  
+// Shutters variables
+int shbuttons[3] = {7, 6, 5} // Pin connectors to the shutters buttons   
+int shutters[3] = {2, 3, 4} // 
 SerialCommand sCmd; // Rename command
 
 // Setting system setup
@@ -53,6 +56,7 @@ void setup() {
   sCmd.addCommand("STEP", Step); // Gives desired amount of steps
   sCmd.addCommand("SENS", ProximityVoltage); // Returns proximity sensor voltage
   sCmd.addCommand("RESET", Reset); // Resets wheel positioning
+  sCmd.addCommand("SHUT", SetShutter); // Opens or closes a selected shutter 
   //sCmd.addCommand("HELP", Help); // Prints Help text
   sCmd.setDefaultHandler(unrecognized); // Handler for command that isn't matched  (says "What?")
      
@@ -367,6 +371,27 @@ void Reset() {
   Actual[Wheel] = 1;
 }
 
+// Opens or closes the shutter
+void ShutterMove() {
+  // Variable initiation
+  char *arg;
+  arg = sCmd.next();
+  // Checks argument found
+  if (arg == NULL) {
+    Serial.println("No shutter stated");
+    return;
+  }
+  int Shutter = atoi(arg);
+  Shutter = Shutter - 1; // Choosing the desired shutter
+  
+  // Checking a valid shutter 
+  if (Wheel <= -1 || Wheel >= 3) {
+    Serial.println("Invalid shutter");
+    return;
+  }
+  
+  
+}
 /**
 // Prints Help text through serial
 void Help() {

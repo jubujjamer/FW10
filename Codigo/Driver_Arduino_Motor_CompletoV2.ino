@@ -36,8 +36,8 @@ void setup() {
   // Setting up the pin numbers for the pins variable
   for (int p = 0; p <= 2; p++) { 
     pins[0][0] = 2; // Set wire type
-    pins[p][1] = 2 * p + 7; // pin
-    pins[p][2] = 2 * p + 8; // pin
+    pins[p][1] = 2 * p + 8; // pin
+    pins[p][2] = 2 * p + 9; // pin
   }
   
   // Set shutter pin

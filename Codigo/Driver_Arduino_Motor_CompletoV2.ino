@@ -1,6 +1,6 @@
 /** Three motor and shutter controller for Arduino Leonardo
 This script was made to control three filter wheels and one shutter with a single Arduino Leonardo platform.
-This script needs the libraries Accelstepper from http://www.airspayce.com/mikem/arduino/AccelStepper/ and Arduino Serial Command from https://github.com/kroimon/Arduino-SerialCommand . 
+This script needs the libraries Accelstepper from http://www.airspayce.com/mikem/arduino/AccelStepper/ and Arduino Serial Command from https://github.com/kroimon/Arduino-SerialCommand .
 When sending string commands through serial, it needs the correct line terminator (\n) or choose the line ending option in the Arduino Command Monitor.
 Avalaible functions and formats are:
 
@@ -11,7 +11,7 @@ POS? W: Returns a string stating the actual position of wheel W. W is an integer
 STEP S W: Moves wheel W, S steps. W is an integer between 1 and 3;
 SENS W: Senses the voltage returned by the sensor. W is an integer between 1 and 3;
 RESET W: Resets the wheel W to the origin set by the marker and sets it as origin (1). W is an integer between 1 and 3. If the threshold can´t be found, a string is returned stating the problem. If it´s already at the marker, it moves away from it and searches for it again.
-SHUT S M: Turns Shuter S on or off. S is an integer between 1 and 3. M is a shuter state: 0 for closed, 1 for open 
+SHUT S M: Turns Shuter S on or off. S is an integer between 1 and 3. M is a shuter state: 0 for closed, 1 for open
 If an unmatching string is sent, a string reporting the error is returned.
 
 Motors corresponding to wheels 1, 2 and 3 should be connected to Arduino pins (7,8), (9,10) and (11,12), respectively. Analogously, voltage sensing pins should be 0, 1 and 2, in the same order.
@@ -21,33 +21,41 @@ Motors corresponding to wheels 1, 2 and 3 should be connected to Arduino pins (7
 #include <SerialCommand.h>
 #include <AccelStepper.h>
 
+// Some macro definitions
+#define BAUD_RATE 9600
+#define SHUTTER_ENABLE 10
+
 // Initiate variables
 int Actual[3] = {1, 1, 1}; // Variable for actual position of each wheel
 int pins[3][3]; // Variable for the Arduino pins where each motor is connected
 int analogpin[3] = {0, 1, 2}; // Analog pin for the voltage measurement of the sensor
 AccelStepper steppers[3]; // {AccelStepper(2, 7, 8), AccelStepper(2, 9, 10), AccelStepper(2, 11, 12)}; //set type motor, and both pins connected to Arduino
 // Shutters variables
-int shbuttons[3] = {7, 6, 5} // Pin connectors to the shutters buttons   
-int shutters[3] = {2, 3, 4} // 
+int shbuttons[3] = {7, 6, 5} // Pin connectors to the shutters buttons
+int shutters[3] = {2, 3, 4} //
 SerialCommand sCmd; // Rename command
 
 // Setting system setup
 void setup() {
+  // Initializing shutter variables
+  pinMode(SHUTTER_ENABLE, OUTPUT);
+  digitalWrite(SHUTTER_ENABLE, LOW);
   // Setting up the pin numbers for the pins variable
-  for (int p = 0; p <= 2; p++) { 
+
+  for (int p = 0; p <= 2; p++) {
     pins[0][0] = 2; // Set wire type
     pins[p][1] = 2 * p + 8; // pin
     pins[p][2] = 2 * p + 9; // pin
   }
-  
+
   // Set shutter pin
   pins[3][3] = 1;
-  
+
   // Setting the motor function pointer
   for (int p = 0; p <= 2; p++) {
     steppers[p] = AccelStepper(pins[p][0], pins[p][1], pins[p][2]);
   }
-  
+
   //// Setup callbacks for SerialCommand commands
   sCmd.addCommand("POS", Position); // Moves to the specified position
   sCmd.addCommand("MOVE", Move); // Moves the amount of steps stated in the argument
@@ -56,18 +64,18 @@ void setup() {
   sCmd.addCommand("STEP", Step); // Gives desired amount of steps
   sCmd.addCommand("SENS", ProximityVoltage); // Returns proximity sensor voltage
   sCmd.addCommand("RESET", Reset); // Resets wheel positioning
-  sCmd.addCommand("SHUT", SetShutter); // Opens or closes a selected shutter 
+  sCmd.addCommand("SHUT", SetShutter); // Opens or closes a selected shutter
   //sCmd.addCommand("HELP", Help); // Prints Help text
   sCmd.setDefaultHandler(unrecognized); // Handler for command that isn't matched  (says "What?")
-     
+
   // Motor characteristics:
   for (int m = 0; m <= 2; m++) {
     steppers[m].setMaxSpeed(10000);
     steppers[m].setAcceleration(37000);
   }
-  
+
   // Start serial port communication with corresponding baud rate
-  Serial.begin(9600);
+  Serial.begin(BAUD_RATE);
   Serial.println("Ready");
 }
 
@@ -85,7 +93,7 @@ void Position()
   int Filter;
   int Wheel;
   char *arg;
-  
+
   arg = sCmd.next();
   if (arg == NULL) {
     Serial.println("No position or wheel stated");
@@ -97,31 +105,31 @@ void Position()
     Serial.println("No position or wheel stated");
     return;
   }
-  Wheel = atoi(arg); 
+  Wheel = atoi(arg);
   Wheel = Wheel - 1; // Choosing the desired wheel
- 
- // Checking a valid position 
+
+ // Checking a valid position
   if (Filter <= 0 || Filter >= 6) {
     Serial.println("Invalid Position");
     return;
   }
-  
-  // Checking a valid wheel 
+
+  // Checking a valid wheel
   if (Wheel <= -1 || Wheel >= 3) {
     Serial.println("Invalid Wheel");
     return;
   }
-  
+
   // Optimization of the steps needed
   int Difference = Filter - Actual[Wheel];
-  
+
   if (Difference >= 3){
     MoveEffector (Difference - 5, Wheel); // Caller for move executer function
   }
   else if (Difference <= -3) {
     MoveEffector (5 + Difference, Wheel); // Caller for move executer function
   }
-  else { 
+  else {
     MoveEffector (Difference, Wheel); // Caller for move executer function
   }
 }
@@ -143,20 +151,20 @@ void Move() {
   }
   int Wheel = atoi(arg);
   Wheel = Wheel - 1; // Choosing the desired wheel
-    
-  // Checking a valid wheel 
+
+  // Checking a valid wheel
   if (Wheel <= -1 || Wheel >= 3) {
     Serial.println("Invalid Wheel");
     return;
   }
-  
+
   MoveEffector(Steps, Wheel); // Caller for move executer function
 }
-  
-// Private function that actually executes the steps  
+
+// Private function that actually executes the steps
 void MoveEffector(int Positions, int stepper)
 {
-   
+
   if (abs(Positions) <= 5) { // Checks number of positions to move so as not to turn all around
     int steps = 120 * Positions; // Calculates how many steps
     steppers[stepper].move(steps);
@@ -164,13 +172,13 @@ void MoveEffector(int Positions, int stepper)
       steppers[stepper].run();
     }
   }
-  
+
   else { // returns log if an excess of steps is asked for
     Serial.println("Step Excess");
     return;
   }
-  // Recalculates actual position 
-  if (Actual[stepper] + Positions > 5) { 
+  // Recalculates actual position
+  if (Actual[stepper] + Positions > 5) {
     Actual[stepper] = Actual[stepper] + Positions - 5;
   }
   else if (Actual[stepper] + Positions < 1) {
@@ -179,10 +187,10 @@ void MoveEffector(int Positions, int stepper)
   else {
     Actual[stepper] = Actual[stepper] + Positions;
   }
-} 
+}
 
 // sets actual position to zero
-void SetZero() { 
+void SetZero() {
   // Variable initiation
   char *arg;
   arg = sCmd.next();
@@ -193,18 +201,18 @@ void SetZero() {
   }
   int Wheel = atoi(arg);
   Wheel = Wheel - 1; // Choosing the desired wheel
-  
-  // Checking a valid wheel 
+
+  // Checking a valid wheel
   if (Wheel <= -1 || Wheel >= 3) {
     Serial.println("Invalid Wheel");
     return;
   }
-  
+
   Actual[Wheel] = 1;
 }
 
 // Returns a string with the actual position
-void StatePosition() {      
+void StatePosition() {
   // Variable initiation
   char *arg;
   arg = sCmd.next();
@@ -215,13 +223,13 @@ void StatePosition() {
   }
   int Wheel = atoi(arg);
   Wheel = Wheel - 1; // Choosing the desired wheel
-  
-  // Checking a valid wheel 
+
+  // Checking a valid wheel
   if (Wheel <= -1 || Wheel >= 3) {
     Serial.println("Invalid Wheel");
     return;
   }
-  
+
   String Where = String(Actual[Wheel]); // Find the actual position of the wheel
   Serial.print("Position ");
   Serial.println(Where);
@@ -242,7 +250,7 @@ void Step() {
     Serial.println("Amount of steps equals more than a full turn");
     return;
   }
-  
+
   arg = sCmd.next();
   // Checks argument found
   if (arg == NULL) {
@@ -251,13 +259,13 @@ void Step() {
   }
   int Wheel = atoi(arg);
   Wheel = Wheel - 1; // Choosing the desired wheel
-  
-  // Checking a valid wheel 
+
+  // Checking a valid wheel
   if (Wheel <= -1 || Wheel >= 3) {
     Serial.println("Invalid Wheel");
     return;
   }
-    
+
   steppers[Wheel].move(Steps);
    while (steppers[Wheel].distanceToGo() != 0){ // Doesn´t return control of Arduino until every step has been made
      steppers[Wheel].run();
@@ -276,13 +284,13 @@ void ProximityVoltage() {
   }
   int Wheel = atoi(arg);
   Wheel = Wheel - 1; // Choosing the desired wheel
-  
-  // Checking a valid wheel 
+
+  // Checking a valid wheel
   if (Wheel <= -1 || Wheel >= 3) {
     Serial.println("Invalid Wheel");
     return;
   }
-  
+
   float Voltage;
   int Sensor;
   Sensor = analogRead(analogpin[Wheel]); // Reads the voltage measured by Arduino. Returns a random voltage if disconnected
@@ -303,71 +311,71 @@ void Reset() {
   }
   int Wheel = atoi(arg);
   Wheel = Wheel - 1; // Choosing the desired wheel
-  
-  // Checking a valid wheel 
+
+  // Checking a valid wheel
   if (Wheel <= -1 || Wheel >= 3) {
     Serial.println("Invalid Wheel");
     return;
   }
-  
+
   int j = 0; // Low voltage step counter
   float Voltage; // Voltage calculated variable
   int Sensor; // Voltage sensed variable in bits
-  
-  // Calculate voltage sensed 
+
+  // Calculate voltage sensed
   Sensor = analogRead(analogpin[Wheel]);
   Voltage = Sensor * (5.0/1023.0);
-  
+
   // Moves away from marker if it is already on it
   if (Voltage > VoltageThreshold) {
     MoveEffector(4, Wheel); // Caller for move executer function
   }
-  
-  // Calculate voltage sensed 
+
+  // Calculate voltage sensed
   Sensor = analogRead(analogpin[Wheel]);
   Voltage = Sensor * (5.0/1023.0);
-  
-  // Searchs for the beginning of the marker  
+
+  // Searchs for the beginning of the marker
   while (Voltage <= VoltageThreshold && j <= 750) {
     steppers[Wheel].move(1);
     while (steppers[Wheel].distanceToGo() != 0){ // Doesn´t return control of Arduino until every step has been made
       steppers[Wheel].run();
     }
-    // Calculate voltage sensed 
+    // Calculate voltage sensed
     Sensor = analogRead(analogpin[Wheel]);
     Voltage = Sensor * (5.0/1023.0);
-    
+
     j = j + 1;
   }
-  
+
   int i = 0; // High voltage step counter
-  
+
   // Counts the steps to the end of the marker
   while (Voltage >= VoltageThreshold && i <= 750) {
     steppers[Wheel].move(1);
     while (steppers[Wheel].distanceToGo() != 0){ // Doesn´t return control of Arduino until every step has been made
       steppers[Wheel].run();
     }
-    
-    // Calculate voltage sensed 
+
+    // Calculate voltage sensed
     Sensor = analogRead(analogpin[Wheel]);
     Voltage = Sensor * (5.0/1023.0);
     i = i + 1;
   }
-  
+
   // Returns log if a high voltage is measured in every step. Usually happens when the Arduino is disconnected or the marker can't be seen by the sensor
   if (i >= 749 || j >= 749) {
     Serial.println("Position marker not found");
     return;
   }
-  
+
   // Returns to the middle of the points between both thresholds
   delay(300);
   steppers[Wheel].move(-i/2);
   while (steppers[Wheel].distanceToGo() != 0){ // Doesn´t return control of Arduino until every step has been made
     steppers[Wheel].run();
   }
-  
+
   Actual[Wheel] = 1;
 }
 
@@ -383,14 +391,19 @@ void ShutterMove() {
   }
   int Shutter = atoi(arg);
   Shutter = Shutter - 1; // Choosing the desired shutter
-  
-  // Checking a valid shutter 
-  if (Wheel <= -1 || Wheel >= 3) {
+
+  // Checking a valid shutter
+  if (Shutter <= -1 || Shutter >= 3) {
     Serial.println("Invalid shutter");
     return;
+    // Turns on the mosfet enabling the high power mode of the shutters
+    digitalWrite(SHUTTER_ENABLE, HIGH);
+    digitalWrite(shutters[Shutter], !digitalRead(shutters[Shutter]));
+    delay(100);
+    digitalWrite(SHUTTER_ENABLE, LOW);
   }
-  
-  
+
+
 }
 /**
 // Prints Help text through serial

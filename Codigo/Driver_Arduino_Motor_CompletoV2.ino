@@ -32,7 +32,7 @@ int analogpin[3] = {0, 1, 2}; // Analog pin for the voltage measurement of the s
 AccelStepper steppers[3]; // {AccelStepper(2, 7, 8), AccelStepper(2, 9, 10), AccelStepper(2, 11, 12)}; //set type motor, and both pins connected to Arduino
 // Shutters variables
 int shbuttons[3] = {7, 6, 5} // Pin connectors to the shutters buttons
-int shutters[3] = {2, 3, 4} //
+int shutters[3] = {2, 3, 4} // Cnnectors to the shutters
 SerialCommand sCmd; // Rename command
 
 // Setting system setup
